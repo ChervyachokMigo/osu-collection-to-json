@@ -1,3 +1,4 @@
+var log = console.log.bind(console)
 module.exports = {
 	_cursoroffset: 0,
 	debug: 0,

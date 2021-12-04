@@ -3,6 +3,7 @@ var fs = require('fs')
 var path = require('path')
 
 var bh = require('./osu-collection-bithexfunctions.js')
+bh.debug = 0
 
 var collectionReader = {
 
