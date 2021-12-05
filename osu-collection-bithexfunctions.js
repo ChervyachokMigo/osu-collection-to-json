@@ -1,5 +1,6 @@
 var log = console.log.bind(console)
 var fs = require('fs')
+
 module.exports = {
 	_cursoroffset: 0,
 	debug: 0,
@@ -9,7 +10,7 @@ module.exports = {
 	openFileDB: async function(fileDb){
 		var stats = await fs.statSync(fileDb)
 		var fileSizeInBytes = stats.size
-		this.dataBuffer = Buffer.alloc(fileSizeInBytes)
+		this.dataBuffer = await Buffer.alloc(fileSizeInBytes)
 		this.fd = await fs.promises.open(fileDb,'r')
 		this._cursoroffset = 0
 		//throw new Error(this.dataBuffer.length)
@@ -102,24 +103,18 @@ module.exports = {
 	getString: async function(){
 		let isDebug = this.debug
 		if (this.debug == 1) this.debug = 0
+
 		let stringCode = await this.getInt8()
 		if (stringCode == 11){
-			let stringLength = await this.getInt8()
+			let stringLength = await this.read7bitInt()
 			let res = (await this.getStringBytes(stringLength)).toString('utf8')
 			if (isDebug == 1) this.debug = 1
-			if (this.debug==1) log ({String: res,Length:stringLength})
+			log ({String: res,Length:stringLength})
 			return res
-		} else {
-			let stringCode = await this.getInt8()
-			if (stringCode == 11){
-				let stringLength = await this.getInt8()
-				let res = (await this.getStringBytes(stringLength)).toString('utf8')
-				if (isDebug == 1) this.debug = 1
-				if (this.debug==1) log ({String: res,Length:stringLength})
-				return res
-		}
-			//log ('error read string')
-			//return false
+		}else {
+			if (isDebug == 1) this.debug = 1
+			log ('error read string')
+			return ''
 		}
 	},
 
@@ -166,25 +161,100 @@ module.exports = {
 		return res.buffer
 	},
 
+ 	read7bitInt: async function(){
+    let total = 0;
+    let shift = 0;
+    let byte = await this.getByte()
+    if ((byte & 0x80) === 0) {
+      total |= (byte & 0x7f) << shift;
+    } else {
+      let end = false;
+      do {
+        if (shift) {
+          byte = await this.getByte()
+        }
+        total |= (byte & 0x7f) << shift;
+        if ((byte & 0x80) === 0) end = true;
+        shift += 7;
+      } while (!end);
+    }
+
+    return total;
+  },
+
 	getStringBytes: async function (length){
 		let _cursoroffset_old = this._cursoroffset
+		let res
 		if (length > 0){
-			let stringType = await this.getInt8withoutOffset(await this.bufferRead(_cursoroffset_old,1))
-			if (stringType == 1) {
-				log ('type '+stringType)
-				this._cursoroffset += 1
-				this._cursoroffset += length	
-				let res2 = await this.bufferRead(_cursoroffset_old,length)
+			let stringTypeBuff = await this.bufferRead(_cursoroffset_old,1)
+			let stringType = await this.getInt8withoutOffset(stringTypeBuff)
+			if (this.debug == 1) log ('string type '+stringType)
+			switch (stringType){
+				case 1:
+					let res2 = await this.bufferRead(_cursoroffset_old + 1 ,length)
+					res = res2
+					this._cursoroffset += 1
+					this._cursoroffset += length
+					break;
+				case 2:
+					let res3 = await Buffer.alloc(0)
+					//res3 = Buffer.concat([res3,stringTypeBuff])
+					this._cursoroffset += 1
 
-			} else {
-				this._cursoroffset += length	
+					let sequenceLength = length-1
+					for (let i = 1; i <= sequenceLength; i++){
+						let charByte = await this.readUTF8Char()
+						res3 = await Buffer.concat([res3,charByte]) 
+					}
+
+					res = res3
+
+					//throw new Error('test')
+					break;
+				default:
+					res = await this.bufferRead(_cursoroffset_old,length)
+					this._cursoroffset += length
 			}
+			
 		} else {
-			this._cursoroffset += length
+			res = ''
 		}
-		let res = await this.bufferRead(_cursoroffset_old,length)
 			
 		
+		return res
+	},
+
+	readUTF8Char: async function(){
+		let res = await Buffer.alloc(0)
+
+		char = await this.bufferRead(this._cursoroffset,1)
+		this._cursoroffset += 1
+
+		res = await Buffer.concat([res,char])
+
+		let charInt = await this.hex2int(await (this.buffer2hexstr(char)))
+
+		if (charInt >= 192 && charInt <= 223) {
+			let char2 = await this.bufferRead(this._cursoroffset, 1)
+			this._cursoroffset += 1
+			res = Buffer.concat([res,char2])
+		}
+		if (charInt >= 224 && charInt <= 239) {
+			let char3 = await this.bufferRead(this._cursoroffset, 1)
+			this._cursoroffset += 1
+			let char4 = await this.bufferRead(this._cursoroffset, 1)
+			this._cursoroffset += 1
+			res = Buffer.concat([res,char3,char4])							
+		}
+		if (charInt >= 240 && charInt <= 247) {
+			let char5 = await this.bufferRead(this._cursoroffset, 1)
+			this._cursoroffset += 1
+			let char6 = await this.bufferRead(this._cursoroffset, 1)
+			this._cursoroffset += 1
+			let char7 = await this.bufferRead(this._cursoroffset, 1)
+			this._cursoroffset += 1
+			res = Buffer.concat([res,char5,char6,char7])
+		}
 		return res
 	},
 
@@ -242,3 +312,4 @@ module.exports = {
 		return BufferHex.toString('hex')
 	}
 }
+
