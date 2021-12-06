@@ -2,10 +2,11 @@ var log = console.log.bind(console)
 var fs = require('fs')
 var path = require('path')
 var lodash = require('lodash')
-var m3uwriter = require('m3u');
+var sanitize = require("sanitize-filename");
 
 var bh = require('./osu-collection-bithexfunctions.js')
 var progress = require('./progress-bar.js')
+var config = require('./config.js')
 
 bh.debug = 0
 var collectionReader = {
@@ -15,7 +16,7 @@ db: [],
 
 readCollectionDbAndSaveJson: async function(){
 
-	var collectionfile = 'C:\\Osu\\collection.db'
+	var collectionfile = config.osuFolder + '\\collection.db'
 	var collectionsJson = 'collections.json'
 
 	await bh.openFileDB(collectionfile)	
@@ -52,7 +53,7 @@ readCollectionDbAndSaveJson: async function(){
 
 readOsuDbAndSaveJson: async function(){
 
-	var osuDbFile = 'C:\\Osu\\osu!.db'
+	var osuDbFile = config.osuFolder + '\\osu!.db'
 	var beatmapsDBJsonFile = 'db.json'
 
 	await bh.openFileDB(osuDbFile)
@@ -186,7 +187,7 @@ readOsuDbAndSaveJson: async function(){
 },
 	
 readJsonsAndMakePlaylists: async function(){
-	let osuSongs = 'C:\\Osu\\Songs'
+	let osuSongs = config.osuFolder + '\\Songs'
 	let collectionsRAW = fs.readFileSync('collections.json');
 	let collections = JSON.parse(collectionsRAW);
 	let dbRAW = fs.readFileSync('db.json');
@@ -210,7 +211,7 @@ readJsonsAndMakePlaylists: async function(){
 
 			try {
 
-				let beatmap = lodash.filter(db.beatmaps, { 'hash': collection.hashes[i] } );
+				let beatmap = await lodash.filter(db.beatmaps, { 'hash': collection.hashes[i] } );
 				beatmap = beatmap[0]
 				if (beatmap.folderName && beatmap.audioFile ){
 					let beatmapPath = osuSongs+'\\'+beatmap.folderName+'\\'+beatmap.audioFile
@@ -220,20 +221,23 @@ readJsonsAndMakePlaylists: async function(){
 			} catch (e){}
 		}
 
-		playlistItems = playlistItems.filter(onlyUnique);
+		playlistItems = await playlistItems.filter(onlyUnique);
 
 		playlists.push({ name: collection.name, files: playlistItems})
 
 	}
 	
 	for (let playlist of playlists){
-		let playlistWriterCurrent = m3uwriter.writer()
+
+		let playlistCurrent = ''
+
 		for (let file of playlist.files){
-			playlistWriterCurrent.file(file)
+			playlistCurrent += file + '\n'
+			log(file)
 		}
 
 		await checkfolder('playlists')
-		await fs.writeFile('playlists\\'+playlist.name+'.m3u', playlistWriterCurrent)
+		fs.writeFileSync('playlists\\'+sanitize(playlist.name)+'.m3u', playlistCurrent)
 	}
 
 }}
@@ -251,8 +255,10 @@ function checkfolder(path){
 }
 
 main = async function(){
-	//await collectionReader.readCollectionDbAndSaveJson()
-	//await collectionReader.readOsuDbAndSaveJson()
+	if (config.rescanDB == 1){
+		await collectionReader.readCollectionDbAndSaveJson()
+		await collectionReader.readOsuDbAndSaveJson()
+	}
 	await collectionReader.readJsonsAndMakePlaylists()
 }
 main()
