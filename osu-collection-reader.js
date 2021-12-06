@@ -1,6 +1,8 @@
 var log = console.log.bind(console)
 var fs = require('fs')
 var path = require('path')
+var lodash = require('lodash')
+var playlistWriter = require('m3u');
 
 var bh = require('./osu-collection-bithexfunctions.js')
 var progress = require('./progress-bar.js')
@@ -11,7 +13,7 @@ var collectionReader = {
 data: [],
 db: [],
 
-readCollectionDb: async function(){
+readCollectionDbAndSaveJson: async function(){
 
 	var collectionfile = 'C:\\Osu\\collection.db'
 	var collectionsJson = 'collections.json'
@@ -22,18 +24,21 @@ readCollectionDb: async function(){
 	this.data.collectionsLength = await bh.getInt()
 	this.data.collections = []
 
+	await progress.setDefault(this.data.collectionsLength,['Scanning collections','writing '+collectionsJson])
+
 	for (let cc = 1; cc <= this.data.collectionsLength; cc++){
 
 		let collectionName = await bh.getString()
 		let collectionCount = await bh.getInt()
 		let hashes = []
-
+		progress.print()
 		for (let i = 1; i<= collectionCount; i++){
+			
 			let hash = await bh.getString()
 			hashes.push(hash)
 		}
 
-		this.data.collections.push({[collectionName]: hashes, collectionLength: collectionCount })
+		this.data.collections.push({name: collectionName, hashes: hashes, collectionLength: collectionCount })
 
 	}
 
@@ -45,7 +50,7 @@ readCollectionDb: async function(){
 	await colJsonFile.close()
 },
 
-readOsuDb: async function(){
+readOsuDbAndSaveJson: async function(){
 
 	var osuDbFile = 'C:\\Osu\\osu!.db'
 	var beatmapsDBJsonFile = 'db.json'
@@ -66,11 +71,11 @@ readOsuDb: async function(){
 
 	this.db.beatmaps = []
 
-	progress.setDefault(this.db.NumberBeatmaps,['Scanning beatmaps'])
+	await progress.setDefault(this.db.NumberBeatmaps,['Scanning beatmaps','writing '+beatmapsDBJsonFile])
 
 	for (let nb = 1; nb <= this.db.NumberBeatmaps; nb++){
 		try{
-			progress.print()
+			await progress.print()
 		let beatmap = {}
 		beatmap.artist = await bh.getString()
 
@@ -178,10 +183,76 @@ readOsuDb: async function(){
 	await beatmapsJsonFile.writeFile(beatmapsJsonData)
 	await beatmapsJsonFile.close()
 
+},
+	
+readJsonsAndMakePlaylists: async function(){
+	let osuSongs = 'C:\\Osu\\Songs'
+	let collectionsRAW = fs.readFileSync('collections.json');
+	let collections = JSON.parse(collectionsRAW);
+	let dbRAW = fs.readFileSync('db.json');
+	let db = JSON.parse(dbRAW);
+	if (this.debug==1) log("Collections: "+collections.collectionsLength)
+	if (this.debug==1) log("DB stores: "+db.NumberBeatmaps)
+
+	let collectionsAllHashesLength = 0
+	for (let collection of collections.collections){
+		collectionsAllHashesLength += collection.hashes.length
+	}
+
+	progress.setDefault(collectionsAllHashesLength,['reading collections','finding filepathes','store playlist'])
+
+	var playlists = []
+
+	for (let collection of collections.collections){
+		let playlistItems = []
+		for (let i = 0;i<collection.hashes.length;i++){
+			progress.print()
+
+			try {
+
+				let beatmap = lodash.filter(db.beatmaps, { 'hash': collection.hashes[i] } );
+				beatmap = beatmap[0]
+				if (beatmap.folderName && beatmap.audioFile ){
+					let beatmapPath = osuSongs+'\\'+beatmap.folderName+'\\'+beatmap.audioFile
+					playlistItems.push(beatmapPath)
+				}
+
+			} catch (e){}
+		}
+
+		playlistItems = playlistItems.filter(onlyUnique);
+
+		playlists.push({ name: collection.name, files: playlistItems})
+
+	}
+	
+	for (let playlist of playlists){
+		let playlistWriterCurrent = playlistWriter.writer()
+		for (let file of playlist.files){
+			playlistWriterCurrent.file(file)
+		}
+		playlistWriterCurrent = playlistWriterCurrent.join('\n')
+		await checkfolder('playlists')
+		await fs.writeFile('playlists\\'+playlist.name+'.m3u', playlistWriterCurrent)
+	}
+
 }}
 
+function onlyUnique(value, index, self) {
+  return self.indexOf(value) === index;
+}
+
+function checkfolder(path){
+	if (!fs.existsSync(path)) {
+		fs.mkdirSync(path, {
+			recursive: true
+		});
+	}
+}
 
 main = async function(){
-	return (await collectionReader.readOsuDb())
+	await collectionReader.readCollectionDbAndSaveJson()
+	await collectionReader.readOsuDbAndSaveJson()
+	await collectionReader.readJsonsAndMakePlaylists()
 }
 main()
