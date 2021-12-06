@@ -3,11 +3,13 @@ var fs = require('fs')
 var path = require('path')
 
 var bh = require('./osu-collection-bithexfunctions.js')
+var progress = require('./progress-bar.js')
+
 bh.debug = 0
 var collectionReader = {
 
 data: [],
-beatmaps: [],
+db: [],
 
 readCollectionDb: async function(){
 
@@ -46,25 +48,29 @@ readCollectionDb: async function(){
 readOsuDb: async function(){
 
 	var osuDbFile = 'C:\\Osu\\osu!.db'
+	var beatmapsDBJsonFile = 'db.json'
 
 	await bh.openFileDB(osuDbFile)
 
-	this.beatmaps.version = await bh.getInt()
+	this.db.version = await bh.getInt()
 
-	this.beatmaps.FolderCount = await bh.getInt()
+	this.db.FolderCount = await bh.getInt()
 
-	this.beatmaps.isAcountUnlocked = await bh.getBool()
+	this.db.isAcountUnlocked = await bh.getBool()
 
-	this.beatmaps.DateWillUnlocked = await bh.getDate()
+	this.db.DateWillUnlocked = await bh.getDate()
 
-	this.beatmaps.PlayerName = await bh.getString()
+	this.db.PlayerName = await bh.getString()
 
-	this.beatmaps.NumberBeatmaps = await bh.getInt()
+	this.db.NumberBeatmaps = await bh.getInt()
 
-	this.beatmaps.beatmaps = []
+	this.db.beatmaps = []
 
-	for (let nb = 1; nb <= this.beatmaps.NumberBeatmaps; nb++){
+	progress.setDefault(this.db.NumberBeatmaps,['Scanning beatmaps'])
+
+	for (let nb = 1; nb <= this.db.NumberBeatmaps; nb++){
 		try{
+			progress.print()
 		let beatmap = {}
 		beatmap.artist = await bh.getString()
 
@@ -158,13 +164,19 @@ readOsuDb: async function(){
 
 		beatmap.UnknownInt = await bh.getInt()
 		beatmap.ManiaScrollSpeed = await bh.getByte()
+
+		this.db.beatmaps.push({ ...beatmap})
 		} catch (e){
-	log (e)
-}
+			log (e)
+		}
 	}
 
-
 	await bh.closeFileDB()
+
+	var beatmapsJsonData = await JSON.stringify({ ...this.db})
+	var beatmapsJsonFile = await fs.promises.open(beatmapsDBJsonFile,'w')
+	await beatmapsJsonFile.writeFile(beatmapsJsonData)
+	await beatmapsJsonFile.close()
 
 }}
 

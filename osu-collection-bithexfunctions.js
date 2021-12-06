@@ -13,7 +13,6 @@ module.exports = {
 		this.dataBuffer = await Buffer.alloc(fileSizeInBytes)
 		this.fd = await fs.promises.open(fileDb,'r')
 		this._cursoroffset = 0
-		//throw new Error(this.dataBuffer.length)
 	},
 
 	closeFileDB: async function(fileDb){
@@ -109,11 +108,11 @@ module.exports = {
 			let stringLength = await this.read7bitInt()
 			let res = (await this.getStringBytes(stringLength)).toString('utf8')
 			if (isDebug == 1) this.debug = 1
-			log ({String: res,Length:stringLength})
+			if (this.debug == 1) log ({String: res,Length:stringLength})
 			return res
 		}else {
 			if (isDebug == 1) this.debug = 1
-			log ('error read string')
+			if (this.debug == 1) log ('error read string')
 			return ''
 		}
 	},
