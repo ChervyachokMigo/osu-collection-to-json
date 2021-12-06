@@ -132,8 +132,10 @@ readOsuDbAndSaveJson: async function(){
 		beatmap.timingPoints = []
 
 		for (let tp=1; tp<=beatmap.timingPointsNumber; tp++){
-			beatmap.timingPoints.push(await bh.getTimingPoint())
+			beatmap.timingPoints.push( ...(await bh.getTimingPoint()))
 		}
+
+		beatmap.timingPoints = { ...beatmap.timingPoints}
 
 		beatmap.Id = await bh.getInt()
 		beatmap.setId= await bh.getInt()
@@ -155,18 +157,18 @@ readOsuDbAndSaveJson: async function(){
 		beatmap.onlineOffset = await bh.getShort()
 		beatmap.fontTitle = await bh.getString()
 
-		isBeatmapPlayed = await bh.getBool()
+		beatmap.isPlayed = await bh.getBool()
 		beatmap.lastTimePlayed = await bh.getLong()
-		isBeatmapOsz2 = await bh.getBool()
+		beatmap.isOsz2 = await bh.getBool()
 
 		beatmap.folderName = await bh.getString()
 		beatmap.lastTimeChecked = await bh.getLong()
 
-		isIgnoreSounds = await bh.getBool()
-		isIgnoreSkin = await bh.getBool()
-		isDisableStoryboard = await bh.getBool()
-		isDisableVideo = await bh.getBool()
-		isVisualOverride = await bh.getBool()
+		beatmap.isIgnoreSounds = await bh.getBool()
+		beatmap.isIgnoreSkin = await bh.getBool()
+		beatmap.isDisableStoryboard = await bh.getBool()
+		beatmap.isDisableVideo = await bh.getBool()
+		beatmap.isVisualOverride = await bh.getBool()
 
 		beatmap.UnknownInt = await bh.getInt()
 		beatmap.ManiaScrollSpeed = await bh.getByte()
