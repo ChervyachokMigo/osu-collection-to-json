@@ -2,7 +2,7 @@ var log = console.log.bind(console)
 var fs = require('fs')
 var path = require('path')
 var lodash = require('lodash')
-var playlistWriter = require('m3u');
+var m3uwriter = require('m3u');
 
 var bh = require('./osu-collection-bithexfunctions.js')
 var progress = require('./progress-bar.js')
@@ -227,11 +227,11 @@ readJsonsAndMakePlaylists: async function(){
 	}
 	
 	for (let playlist of playlists){
-		let playlistWriterCurrent = playlistWriter.writer()
+		let playlistWriterCurrent = m3uwriter.writer()
 		for (let file of playlist.files){
 			playlistWriterCurrent.file(file)
 		}
-		playlistWriterCurrent = playlistWriterCurrent.join('\n')
+
 		await checkfolder('playlists')
 		await fs.writeFile('playlists\\'+playlist.name+'.m3u', playlistWriterCurrent)
 	}
@@ -251,8 +251,8 @@ function checkfolder(path){
 }
 
 main = async function(){
-	await collectionReader.readCollectionDbAndSaveJson()
-	await collectionReader.readOsuDbAndSaveJson()
+	//await collectionReader.readCollectionDbAndSaveJson()
+	//await collectionReader.readOsuDbAndSaveJson()
 	await collectionReader.readJsonsAndMakePlaylists()
 }
 main()
