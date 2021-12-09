@@ -19,6 +19,47 @@ module.exports = {
 		await this.fd.close()
 	},
 
+	skipByte: async function (){
+		this._cursoroffset += 1
+		//if (this.debug==1) log ('skipped Byte')
+	},
+
+	skipBool: async function (){
+		this._cursoroffset += 1
+		//if (this.debug==1) log ('skipped Bool')
+	},
+
+	skipShort: async function (){
+		this._cursoroffset += 2
+		//if (this.debug==1) log ('skipped Short')
+	},
+
+	skipInt: async function (){
+		this._cursoroffset += 4
+		//if (this.debug==1) log ('skipped Int')
+	},
+
+
+	skipDate: async function (){
+		this._cursoroffset += 8
+		//if (this.debug==1) log ('skipped Date')
+	},
+
+	skipLong: async function (){
+		this._cursoroffset += 8
+		//if (this.debug==1) log ('skipped Long')
+	},
+
+	skipSingle: async function(){
+		this._cursoroffset += 4
+		//if (this.debug==1) log ('skipped Single')
+	},
+
+	skipDouble: async function(){
+		this._cursoroffset += 8
+		//if (this.debug==1) log ('skipped Double')
+	},
+
 	getByte: async function (){
 		return this.getInt8()
 	},
@@ -44,15 +85,25 @@ module.exports = {
 	},
 
 	getSingle: async function(){
-		let _cursoroffset_old = this._cursoroffset
+		let res = await this.bufferRead(this._cursoroffset,4)
 		this._cursoroffset += 4
-		let res = await this.bufferRead(_cursoroffset_old,4)
 		res=res.readInt32LE(0).toString(16)
 		res = res.substring(1)
 		res = Buffer.from(res,'hex')
 		res = (res.readInt16LE(0).toString(10))/2
 		if (this.debug==1) log (res)
 		return res
+	},
+
+	skipIntDoublePair: async function (){
+		let count = await this.getInt()
+		for (let i=1;i<=count;i++){
+			await this.skipByte()
+			await this.skipInt()
+			await this.skipByte()
+			await this.skipDouble()
+		}
+		if (this.debug==1) log ('skipped '+ count + 'IntDoublePairs')
 	},
 
 	getIntDoublePair: async function(){
@@ -79,10 +130,15 @@ module.exports = {
 		return res
 	},
 
+	skipTimingPoints: async function(num){
+		this._cursoroffset += 17 * num
+		if (this.debug==1) log ('skipped '+num+' Timing points')
+	},
+
 	getTimingPoint: async function(){
 		let isDebug = this.debug
 		if (this.debug == 1) this.debug = 0
-		let res = {}
+		let res = []
 		res.double1 = await this.getDouble()
 		res.double2 = await this.getDouble()
 		res.bool1 = await this.getBool()
@@ -97,24 +153,6 @@ module.exports = {
 
 	buff2int: async function(hex){
 		return await this.bin2int(await this.hex2bin(await this.changeEndianness(await this.buffer2hexstr(hex))))
-	},
-
-	getString: async function(){
-		let isDebug = this.debug
-		if (this.debug == 1) this.debug = 0
-
-		let stringCode = await this.getInt8()
-		if (stringCode == 11){
-			let stringLength = await this.read7bitInt()
-			let res = (await this.getStringBytes(stringLength)).toString('utf8')
-			if (isDebug == 1) this.debug = 1
-			if (this.debug == 1) log ({String: res,Length:stringLength})
-			return res
-		}else {
-			if (isDebug == 1) this.debug = 1
-			if (this.debug == 1) log ('error read string')
-			return ''
-		}
 	},
 
 	changeEndianness: async function (string){
@@ -181,11 +219,45 @@ module.exports = {
     return total;
   },
 
+  skipString: async function (){
+  	let isDebug = this.debug
+  	if (this.debug == 1) this.debug = 0
+
+  	let stringCode = await this.getInt8()
+		if (stringCode == 11){
+			let stringLength = await this.read7bitInt()
+			if (stringLength > 0){
+				this._cursoroffset += stringLength
+			}
+		}
+		if (this.debug==1) log ('skipped String')
+  },
+
+	getString: async function(){
+		let isDebug = this.debug
+		if (this.debug == 1) this.debug = 0
+			let stringCode = await this.getInt8()
+			if (stringCode == 11){
+					let stringLength = await this.read7bitInt()
+
+					let res = ''
+					if (stringLength>0){
+						res = (await this.getStringBytes(stringLength)).toString('utf8')
+					}
+					if (isDebug == 1) this.debug = 1
+					if (this.debug == 1) log ({String: res,Length:stringLength})
+					return res
+			}else {
+				if (isDebug == 1) this.debug = 1
+				if (this.debug == 1) log ('error read string')
+				return ''
+			}
+	},
+
 	getStringBytes: async function (length){
-		let _cursoroffset_old = this._cursoroffset
 		let res
 		if (length > 0){
-			let stringTypeBuff = await this.bufferRead(_cursoroffset_old,1)
+			/*let stringTypeBuff = await this.bufferRead(_cursoroffset_old,1)
 			let stringType = await this.getInt8withoutOffset(stringTypeBuff)
 			if (this.debug == 1) log ('string type '+stringType)
 			switch (stringType){
@@ -210,10 +282,10 @@ module.exports = {
 
 					//throw new Error('test')
 					break;
-				default:
-					res = await this.bufferRead(_cursoroffset_old,length)
+				default:*/
+					res = await this.bufferRead(this._cursoroffset,length)
 					this._cursoroffset += length
-			}
+			
 			
 		} else {
 			res = ''
@@ -257,34 +329,30 @@ module.exports = {
 		return res
 	},
 
-	getInt64: async function (){
-		let _cursoroffset_old = this._cursoroffset
+	getInt64: async function (){		
+		let res = await this.buff2int(await this.bufferRead(this._cursoroffset,8))
 		this._cursoroffset += 8
-		let res = await this.buff2int(await this.bufferRead(_cursoroffset_old,8))
 		if (this.debug==1) log (res)
 		return res
 	},
 
-	getInt32: async function (){
-		let _cursoroffset_old = this._cursoroffset
+	getInt32: async function (){		
+		let res = await this.buff2int(await this.bufferRead(this._cursoroffset,4))
 		this._cursoroffset += 4
-		let res = await this.buff2int(await this.bufferRead(_cursoroffset_old,4))
 		if (this.debug==1) log (res)
 		return res
 	},
 
 	getInt16: async function (){
-		let _cursoroffset_old = this._cursoroffset
+		let res = await this.buff2int(await this.bufferRead(this._cursoroffset,2))
 		this._cursoroffset += 2
-		let res = await this.buff2int(await this.bufferRead(_cursoroffset_old,2))
 		if (this.debug==1) log (res)
 		return res
 	},
 
 	getInt8: async function (){
-		let _cursoroffset_old = this._cursoroffset
+		let res = await this.buff2int(await this.bufferRead(this._cursoroffset,1))
 		this._cursoroffset += 1
-		let res = await this.buff2int(await this.bufferRead(_cursoroffset_old,1))
 		if (this.debug==1) log (res)
 		return res
 	},

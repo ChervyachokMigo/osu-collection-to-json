@@ -8,10 +8,10 @@ var bh = require('./osu-collection-bithexfunctions.js')
 var progress = require('./progress-bar.js')
 var config = require('./config.js')
 
-bh.debug = 0
+bh.debug = config.isDebug
 var collectionReader = {
 
-data: [],
+collectionsdb: [],
 db: [],
 
 readCollectionDbAndSaveJson: async function(){
@@ -21,13 +21,13 @@ readCollectionDbAndSaveJson: async function(){
 
 	await bh.openFileDB(collectionfile)	
 
-	this.data.version = await bh.getInt()
-	this.data.collectionsLength = await bh.getInt()
-	this.data.collections = []
+	this.collectionsdb.version = await bh.getInt()
+	this.collectionsdb.collectionsLength = await bh.getInt()
+	this.collectionsdb.collections = []
 
-	await progress.setDefault(this.data.collectionsLength,['Scanning collections','writing '+collectionsJson])
+	await progress.setDefault(this.collectionsdb.collectionsLength,['Scanning collections','writing '+collectionsJson])
 
-	for (let cc = 1; cc <= this.data.collectionsLength; cc++){
+	for (let cc = 1; cc <= this.collectionsdb.collectionsLength; cc++){
 
 		let collectionName = await bh.getString()
 		let collectionCount = await bh.getInt()
@@ -39,13 +39,13 @@ readCollectionDbAndSaveJson: async function(){
 			hashes.push(hash)
 		}
 
-		this.data.collections.push({name: collectionName, hashes: hashes, collectionLength: collectionCount })
+		this.collectionsdb.collections.push({name: collectionName, hashes: hashes, collectionLength: collectionCount })
 
 	}
 
 	await bh.closeFileDB()
 
-	var collectionsJsonData = await JSON.stringify({ ...this.data})
+	var collectionsJsonData = await JSON.stringify({ ...this.collectionsdb})
 	var colJsonFile = await fs.promises.open(collectionsJson,'w')
 	await colJsonFile.writeFile(collectionsJsonData)
 	await colJsonFile.close()
@@ -78,100 +78,142 @@ readOsuDbAndSaveJson: async function(){
 		try{
 			await progress.print()
 		let beatmap = {}
-		beatmap.artist = await bh.getString()
 
-		beatmap.artistUni = await bh.getString()
-
-		beatmap.title = await bh.getString()
-
-		beatmap.titleUni = await bh.getString()
-
-		beatmap.creator = await bh.getString()
-
-		beatmap.difficulty = await bh.getString()
+		if (config.isFullRescan == 0){
+			await bh.skipString()
+			await bh.skipString()
+			await bh.skipString()
+			await bh.skipString()
+			await bh.skipString()
+			await bh.skipString()
+		} else {
+			beatmap.artist = await bh.getString()
+			beatmap.artistUni = await bh.getString()
+			beatmap.title = await bh.getString()
+			beatmap.titleUni = await bh.getString()
+			beatmap.creator = await bh.getString()
+			beatmap.difficulty = await bh.getString()
+		}
 
 		beatmap.audioFile = await bh.getString()
-
 		beatmap.hash = await bh.getString()
 
-		beatmap.osuFilename = await bh.getString()
+		if (config.isFullRescan == 0){
+			await bh.skipString()
+			await bh.skipByte()
+			await bh.skipShort()
+			await bh.skipShort()
+			await bh.skipShort()
+			await bh.skipLong()
+			await bh.skipInt()
+			await bh.skipInt()
+			await bh.skipInt()
+			await bh.skipInt()
+			await bh.skipDouble()
+			await bh.skipIntDoublePair()
+			await bh.skipIntDoublePair()
+			await bh.skipIntDoublePair()
+			await bh.skipIntDoublePair()
+			await bh.skipInt()
+			await bh.skipInt()
+			await bh.skipInt()
+		} else {
+			beatmap.osuFilename = await bh.getString()
+			beatmap.ranked = await bh.getByte()
+			beatmap.hitcircles = await bh.getShort()
+			beatmap.sliders = await bh.getShort()
+			beatmap.spinners = await bh.getShort()
+			beatmap.lastModify = await bh.getLong()
+			beatmap.AR = await bh.getInt()//await bh.getSingle()
+			beatmap.CS = await bh.getInt()//await bh.getSingle()
+			beatmap.HP = await bh.getInt()//await bh.getSingle()
+			beatmap.OD = await bh.getInt()//await bh.getSingle()
+			beatmap.sliderVelocity = await bh.getDouble()
+			beatmap.stars = await bh.getIntDoublePair()
+			beatmap.stars2 = await bh.getIntDoublePair()
+			beatmap.stars3 = await bh.getIntDoublePair()
+			beatmap.stars4 = await bh.getIntDoublePair()
+			beatmap.draintimeSec = await bh.getInt()
+			beatmap.draintimeMs = await bh.getInt()
+			beatmap.audioPreviewTime = await bh.getInt()
+		}
 
-		beatmap.ranked = await bh.getByte()
 
-		beatmap.hitcircles = await bh.getShort()
-
-		beatmap.sliders = await bh.getShort()
-
-		beatmap.spinners = await bh.getShort()
-
-		beatmap.lastModify = await bh.getLong()
-
-		beatmap.AR = await bh.getInt()//await bh.getSingle()
-
-		beatmap.CS = await bh.getInt()//await bh.getSingle()
-
-		beatmap.HP = await bh.getInt()//await bh.getSingle()
-
-		beatmap.OD = await bh.getInt()//await bh.getSingle()
-
-		beatmap.sliderVelocity = await bh.getDouble()
-
-		beatmap.stars = await bh.getIntDoublePair()
-		beatmap.stars2 = await bh.getIntDoublePair()
-		beatmap.stars3 = await bh.getIntDoublePair()
-		beatmap.stars4 = await bh.getIntDoublePair()
-
-		beatmap.draintimeSec = await bh.getInt()
-
-		beatmap.draintimeMs = await bh.getInt()
-
-		beatmap.audioPreviewTime = await bh.getInt()
 
 		beatmap.timingPointsNumber = await bh.getInt()
 
-		beatmap.timingPoints = []
+		if (config.isFullRescan == 0){
+				await bh.skipTimingPoints(beatmap.timingPointsNumber)
+		} else {
+			beatmap.timingPoints = []
 
-		for (let tp=1; tp<=beatmap.timingPointsNumber; tp++){
-			beatmap.timingPoints.push( ...(await bh.getTimingPoint()))
+			for (let tp=1; tp<=beatmap.timingPointsNumber; tp++){
+					beatmap.timingPoints.push( ...(await bh.getTimingPoint()))
+			}
+
+			beatmap.timingPoints = { ...beatmap.timingPoints}
+
 		}
 
-		beatmap.timingPoints = { ...beatmap.timingPoints}
-
-		beatmap.Id = await bh.getInt()
-		beatmap.setId= await bh.getInt()
-		beatmap.threadId = await bh.getInt()
-
-		beatmap.gradeStd = await bh.getByte()
-		beatmap.gradeTaiko = await bh.getByte()
-		beatmap.gradeCTB = await bh.getByte()
-		beatmap.gradeMania = await bh.getByte()
-
-		beatmap.localOffset = await bh.getShort()
-		beatmap.StackLaniency = await bh.getInt()
-
-		beatmap.gamemode = await bh.getByte()
-
-		beatmap.source = await bh.getString()
-		beatmap.tags = await bh.getString()
-
-		beatmap.onlineOffset = await bh.getShort()
-		beatmap.fontTitle = await bh.getString()
-
-		beatmap.isPlayed = await bh.getBool()
-		beatmap.lastTimePlayed = await bh.getLong()
-		beatmap.isOsz2 = await bh.getBool()
+		if (config.isFullRescan == 0){
+			await bh.skipInt()
+			await bh.skipInt()
+			await bh.skipInt()
+			await bh.skipByte()
+			await bh.skipByte()
+			await bh.skipByte()
+			await bh.skipByte()
+			await bh.skipShort()
+			await bh.skipInt()
+			await bh.skipByte()
+			await bh.skipString()
+			await bh.skipString()
+			await bh.skipShort()
+			await bh.skipString()
+			await bh.skipBool()
+			await bh.skipLong()
+			await bh.skipBool()
+		} else {
+			beatmap.Id = await bh.getInt()
+			beatmap.setId= await bh.getInt()
+			beatmap.threadId = await bh.getInt()
+			beatmap.gradeStd = await bh.getByte()
+			beatmap.gradeTaiko = await bh.getByte()
+			beatmap.gradeCTB = await bh.getByte()
+			beatmap.gradeMania = await bh.getByte()
+			beatmap.localOffset = await bh.getShort()
+			beatmap.StackLaniency = await bh.getInt()
+			beatmap.gamemode = await bh.getByte()
+			beatmap.source = await bh.getString()
+			beatmap.tags = await bh.getString()
+			beatmap.onlineOffset = await bh.getShort()
+			beatmap.fontTitle = await bh.getString()
+			beatmap.isPlayed = await bh.getBool()
+			beatmap.lastTimePlayed = await bh.getLong()
+			beatmap.isOsz2 = await bh.getBool()
+		}
 
 		beatmap.folderName = await bh.getString()
-		beatmap.lastTimeChecked = await bh.getLong()
-
-		beatmap.isIgnoreSounds = await bh.getBool()
-		beatmap.isIgnoreSkin = await bh.getBool()
-		beatmap.isDisableStoryboard = await bh.getBool()
-		beatmap.isDisableVideo = await bh.getBool()
-		beatmap.isVisualOverride = await bh.getBool()
-
-		beatmap.UnknownInt = await bh.getInt()
-		beatmap.ManiaScrollSpeed = await bh.getByte()
+		
+		if (config.isFullRescan == 0){
+			await bh.skipLong()
+			await bh.skipBool()
+			await bh.skipBool()
+			await bh.skipBool()
+			await bh.skipBool()
+			await bh.skipBool()
+			await bh.skipInt()
+			await bh.skipByte()
+		} else {
+			beatmap.lastTimeChecked = await bh.getLong()
+			beatmap.isIgnoreSounds = await bh.getBool()
+			beatmap.isIgnoreSkin = await bh.getBool()
+			beatmap.isDisableStoryboard = await bh.getBool()
+			beatmap.isDisableVideo = await bh.getBool()
+			beatmap.isVisualOverride = await bh.getBool()
+			beatmap.UnknownInt = await bh.getInt()
+			beatmap.ManiaScrollSpeed = await bh.getByte()
+		}
 
 		this.db.beatmaps.push({ ...beatmap})
 		} catch (e){
@@ -202,7 +244,7 @@ readJsonsAndMakePlaylists: async function(){
 		collectionsAllHashesLength += collection.hashes.length
 	}
 
-	progress.setDefault(collectionsAllHashesLength,['reading collections','finding filepathes','store playlist'])
+	progress.setDefault(collectionsAllHashesLength,['reading collections','finding filepathes','store playlists'])
 
 	var playlists = []
 
@@ -235,7 +277,7 @@ readJsonsAndMakePlaylists: async function(){
 
 		for (let file of playlist.files){
 			playlistCurrent += file + '\n'
-			log(file)
+			if (bh.debug==1) log(file)
 		}
 
 		await checkfolder('playlists')
