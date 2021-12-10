@@ -232,15 +232,26 @@ readOsuDbAndSaveJson: async function(){
 	
 readJsonsAndMakePlaylists: async function(){
 	let osuSongs = config.osuFolder + '\\Songs'
-	let collectionsRAW = fs.readFileSync('collections.json');
-	let collections = JSON.parse(collectionsRAW);
-	let dbRAW = fs.readFileSync('db.json');
-	let db = JSON.parse(dbRAW);
-	if (this.debug==1) log("Collections: "+collections.collectionsLength)
-	if (this.debug==1) log("DB stores: "+db.NumberBeatmaps)
+
+	try {
+		if (this.collectionsdb.length == 0){
+			let collectionsRAW = fs.readFileSync('collections.json')
+			this.collectionsdb = JSON.parse(collectionsRAW)
+		}
+		if (this.db.length == 0){
+			let dbRAW = fs.readFileSync('db.json')
+			this.db = JSON.parse(dbRAW)
+		}
+	} catch (e){
+		log (e)
+		return
+	}
+
+	if (this.debug==1) log("Collections: "+this.collectionsdb.collectionsLength)
+	if (this.debug==1) log("DB stores: "+this.db.NumberBeatmaps)
 
 	let collectionsAllHashesLength = 0
-	for (let collection of collections.collections){
+	for (let collection of this.collectionsdb.collections){
 		collectionsAllHashesLength += collection.hashes.length
 	}
 
@@ -248,20 +259,19 @@ readJsonsAndMakePlaylists: async function(){
 
 	var playlists = []
 
-	for (let collection of collections.collections){
+	for (let collection of this.collectionsdb.collections){
+
 		let playlistItems = []
+
 		for (let i = 0;i<collection.hashes.length;i++){
 			progress.print()
-
 			try {
-
-				let beatmap = await lodash.filter(db.beatmaps, { 'hash': collection.hashes[i] } );
+				let beatmap = await lodash.filter(this.db.beatmaps, { 'hash': collection.hashes[i] } );
 				beatmap = beatmap[0]
 				if (beatmap.folderName && beatmap.audioFile ){
 					let beatmapPath = osuSongs+'\\'+beatmap.folderName+'\\'+beatmap.audioFile
 					playlistItems.push(beatmapPath)
 				}
-
 			} catch (e){}
 		}
 
