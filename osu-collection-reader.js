@@ -1,5 +1,6 @@
 var log = console.log.bind(console)
 var fs = require('fs')
+var fse = require('fs-extra');
 var path = require('path')
 var lodash = require('lodash')
 var sanitize = require("sanitize-filename");
@@ -255,13 +256,14 @@ readJsonsAndMakePlaylists: async function(){
 		collectionsAllHashesLength += collection.hashes.length
 	}
 
-	progress.setDefault(collectionsAllHashesLength,['reading collections','finding filepathes','store playlists'])
+	progress.setDefault(collectionsAllHashesLength,['reading collections','finding filepathes'])
 
 	var playlists = []
 
 	for (let collection of this.collectionsdb.collections){
 
 		let playlistItems = []
+		let playlitsFolders = []
 
 		for (let i = 0;i<collection.hashes.length;i++){
 			progress.print()
@@ -270,28 +272,54 @@ readJsonsAndMakePlaylists: async function(){
 				beatmap = beatmap[0]
 				if (beatmap.folderName && beatmap.audioFile ){
 					let beatmapPath = osuSongs+'\\'+beatmap.folderName+'\\'+beatmap.audioFile
+					let beatmapFolder = osuSongs+'\\'+beatmap.folderName
 					playlistItems.push(beatmapPath)
+					playlitsFolders.push(beatmapFolder)
+
 				}
 			} catch (e){}
 		}
 
 		playlistItems = await playlistItems.filter(onlyUnique);
+		playlitsFolders = await playlitsFolders.filter(onlyUnique);
 
-		playlists.push({ name: collection.name, files: playlistItems})
+		playlists.push({ name: collection.name, files: playlistItems, pathes: playlitsFolders})
 
 	}
 	
+	let storetasks = []
+	if (config.storePlaylists == 1){
+		storetasks.push('store playlists')
+	}
+	if (config.backupCollectionSongsFolder == 1){
+		storetasks.push('backup songs')
+	}
+
+	progress.setDefault(playlists.length,storetasks)
+
 	for (let playlist of playlists){
+		progress.print()
+		if (config.storePlaylists == 1){
+			let playlistCurrent = ''
 
-		let playlistCurrent = ''
+			for (let file of playlist.files){
+				playlistCurrent += file + '\n'
+				if (bh.debug==1) log(file)
+			}
 
-		for (let file of playlist.files){
-			playlistCurrent += file + '\n'
-			if (bh.debug==1) log(file)
+			await checkfolder('playlists')
+			fs.writeFileSync('playlists\\'+sanitize(playlist.name)+'.m3u', playlistCurrent)
 		}
-
-		await checkfolder('playlists')
-		fs.writeFileSync('playlists\\'+sanitize(playlist.name)+'.m3u', playlistCurrent)
+		if (config.backupCollectionSongsFolder == 1){
+			await checkfolder('songsbackup')
+			for (let beatmappath of playlist.pathes){
+				fse.copySync(beatmappath, 'songsbackup\\'+path.basename(beatmappath), {overwrite: config.overwriteBackupFolders, function (err) {
+				  if (err) {
+				    console.error(err)
+				  } 
+				}})
+			}
+		}
 	}
 
 }}
