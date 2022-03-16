@@ -21,43 +21,34 @@ module.exports = {
 
 	skipByte: async function (){
 		this._cursoroffset += 1
-		//if (this.debug==1) log ('skipped Byte')
 	},
 
 	skipBool: async function (){
 		this._cursoroffset += 1
-		//if (this.debug==1) log ('skipped Bool')
 	},
 
 	skipShort: async function (){
 		this._cursoroffset += 2
-		//if (this.debug==1) log ('skipped Short')
 	},
 
 	skipInt: async function (){
 		this._cursoroffset += 4
-		//if (this.debug==1) log ('skipped Int')
 	},
-
 
 	skipDate: async function (){
 		this._cursoroffset += 8
-		//if (this.debug==1) log ('skipped Date')
 	},
 
 	skipLong: async function (){
 		this._cursoroffset += 8
-		//if (this.debug==1) log ('skipped Long')
 	},
 
 	skipSingle: async function(){
 		this._cursoroffset += 4
-		//if (this.debug==1) log ('skipped Single')
 	},
 
 	skipDouble: async function(){
 		this._cursoroffset += 8
-		//if (this.debug==1) log ('skipped Double')
 	},
 
 	getByte: async function (){
@@ -257,51 +248,22 @@ module.exports = {
 	getStringBytes: async function (length){
 		let res
 		if (length > 0){
-			/*let stringTypeBuff = await this.bufferRead(_cursoroffset_old,1)
-			let stringType = await this.getInt8withoutOffset(stringTypeBuff)
-			if (this.debug == 1) log ('string type '+stringType)
-			switch (stringType){
-				case 1:
-					let res2 = await this.bufferRead(_cursoroffset_old + 1 ,length)
-					res = res2
-					this._cursoroffset += 1
-					this._cursoroffset += length
-					break;
-				case 2:
-					let res3 = await Buffer.alloc(0)
-					//res3 = Buffer.concat([res3,stringTypeBuff])
-					this._cursoroffset += 1
-
-					let sequenceLength = length-1
-					for (let i = 1; i <= sequenceLength; i++){
-						let charByte = await this.readUTF8Char()
-						res3 = await Buffer.concat([res3,charByte]) 
-					}
-
-					res = res3
-
-					//throw new Error('test')
-					break;
-				default:*/
-					res = await this.bufferRead(this._cursoroffset,length)
-					this._cursoroffset += length
-			
-			
+			res = await this.bufferRead(this._cursoroffset,length)
+			this._cursoroffset += length
 		} else {
 			res = ''
-		}
-			
+		}	
 		
 		return res
 	},
 
 	readUTF8Char: async function(){
-		let res = await Buffer.alloc(0)
+		let res = Buffer.alloc(0)
 
 		char = await this.bufferRead(this._cursoroffset,1)
 		this._cursoroffset += 1
 
-		res = await Buffer.concat([res,char])
+		res = Buffer.concat([res,char])
 
 		let charInt = await this.hex2int(await (this.buffer2hexstr(char)))
 

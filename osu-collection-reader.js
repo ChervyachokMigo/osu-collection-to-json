@@ -26,7 +26,7 @@ readCollectionDbAndSaveJson: async function(){
 	this.collectionsdb.collectionsLength = await bh.getInt()
 	this.collectionsdb.collections = []
 
-	await progress.setDefault(this.collectionsdb.collectionsLength,['Scanning collections','writing '+collectionsJson])
+	progress.setDefault(this.collectionsdb.collectionsLength,['Scanning collections','writing '+collectionsJson])
 
 	for (let cc = 1; cc <= this.collectionsdb.collectionsLength; cc++){
 
@@ -77,7 +77,7 @@ readOsuDbAndSaveJson: async function(){
 
 	for (let nb = 1; nb <= this.db.NumberBeatmaps; nb++){
 		try{
-			await progress.print()
+			progress.print()
 		let beatmap = {}
 
 		if (config.isFullRescan == 0){
@@ -138,8 +138,6 @@ readOsuDbAndSaveJson: async function(){
 			beatmap.draintimeMs = await bh.getInt()
 			beatmap.audioPreviewTime = await bh.getInt()
 		}
-
-
 
 		beatmap.timingPointsNumber = await bh.getInt()
 
@@ -224,7 +222,7 @@ readOsuDbAndSaveJson: async function(){
 
 	await bh.closeFileDB()
 
-	var beatmapsJsonData = await JSON.stringify({ ...this.db})
+	var beatmapsJsonData = JSON.stringify({ ...this.db})
 	var beatmapsJsonFile = await fs.promises.open(beatmapsDBJsonFile,'w')
 	await beatmapsJsonFile.writeFile(beatmapsJsonData)
 	await beatmapsJsonFile.close()
@@ -280,8 +278,8 @@ readJsonsAndMakePlaylists: async function(){
 			} catch (e){}
 		}
 
-		playlistItems = await playlistItems.filter(onlyUnique);
-		playlitsFolders = await playlitsFolders.filter(onlyUnique);
+		playlistItems = playlistItems.filter(onlyUnique);
+		playlitsFolders = playlitsFolders.filter(onlyUnique);
 
 		playlists.push({ name: collection.name, files: playlistItems, pathes: playlitsFolders})
 
@@ -297,8 +295,13 @@ readJsonsAndMakePlaylists: async function(){
 
 	progress.setDefault(playlists.length,storetasks)
 
+	if (config.backupCollectionDestination)
+		config.backupCollectionDestination += '\\'
+
 	for (let playlist of playlists){
+
 		progress.print()
+
 		if (config.storePlaylists == 1){
 			let playlistCurrent = ''
 
@@ -307,13 +310,13 @@ readJsonsAndMakePlaylists: async function(){
 				if (bh.debug==1) log(file)
 			}
 
-			await checkfolder('playlists')
-			fs.writeFileSync('playlists\\'+sanitize(playlist.name)+'.m3u', playlistCurrent)
+			checkfolder(config.playlistsFolder)
+			fs.writeFileSync(`${config.playlistsFolder}\\${sanitize(playlist.name)}.m3u`, playlistCurrent)
 		}
 		if (config.backupCollectionSongsFolder == 1){
-			await checkfolder('songsbackup')
+			checkfolder(`${config.backupCollectionDestination}songsbackup`)
 			for (let beatmappath of playlist.pathes){
-				fse.copySync(beatmappath, 'songsbackup\\'+path.basename(beatmappath), {overwrite: config.overwriteBackupFolders, function (err) {
+				fse.copySync(beatmappath, `${config.backupCollectionDestination}songsbackup\\${path.basename(beatmappath)}`, {overwrite: config.overwriteBackupFolders, function (err) {
 				  if (err) {
 				    console.error(err)
 				  } 

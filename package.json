@@ -1,0 +1,31 @@
+{
+  "name": "osu-collection-to-m3u-main",
+  "version": "1.0.0",
+  "description": "Создание плейлистов из вашей коллекции osu",
+  "main": "osu-collection-reader.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ChervyachokMigo/osu-collection-to-m3u.git"
+  },
+  "keywords": [
+    "osu",
+    "collections",
+    "mp3"
+  ],
+  "author": "sadgod",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ChervyachokMigo/osu-collection-to-m3u/issues"
+  },
+  "homepage": "https://github.com/ChervyachokMigo/osu-collection-to-m3u#readme",
+  "dependencies": {
+    "fs": "^0.0.1-security",
+    "fs-extra": "^10.0.1",
+    "lodash": "^4.17.21",
+    "path": "^0.12.7",
+    "sanitize-filename": "^1.6.3"
+  }
+}
