@@ -5,6 +5,6 @@ set NODE_OPTIONS=--max-old-space-size=8192
 
 :start
 
-"%programfiles%\nodejs\node" "osu-collection-reader.js"
+node osu-collection-reader.js
 
 pause
