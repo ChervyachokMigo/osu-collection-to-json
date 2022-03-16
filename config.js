@@ -1,7 +1,7 @@
 module.exports = {
 
 	osuFolder: 'C:\\Osu',			//your osu folder with back slashes
-	rescanDB: 0	,					//1 - rescan osu .db files, 0 - switch off
+	rescanDB: 1	,					//1 - rescan osu .db files, 0 - switch off
 									//switch to 1 - first
 	
 	isFullRescan: 0,				//store every parameter of beatmap to json
@@ -14,10 +14,10 @@ module.exports = {
 	playlistsFolder: 'playlists',	
 
 	//destination of copy music
-	musicCollectionFolder: 'F:\\osu_collections_music',	
+	musicCollectionFolder: 'C:\\osu_collections_music',	
 
 	//backup all songs-folders from collection
 	backupCollectionSongsFolder: 0,
-	backupCollectionDestination: `F:\\osu_songs_backup`,
+	backupCollectionDestination: `C:\\osu_songs_backup`,
 	overwriteBackupFolders: false,
 }
