@@ -1,43 +1,35 @@
-var log = console.log.bind(console)
-var config = require('./config.js')
-var fs = require('fs')
-var path = require('path')
+const { readFile, copyFileSync, readdirSync } = require('fs');
+const path = require('path');
 
-var run = async ()=>{
-	try{
-		var playlistsDir = fs.readdirSync(config.playlistsFolder)
-	} catch (e){
-		throw new Error (`Unknown playlist folder. Check config file.`)
-	}
+const { checkfolder } = require('./misc.js');
+const config = require('./config.js');
 
-	if (config.musicCollectionFolder)
-		config.musicCollectionFolder += '\\'
+const log = console.log.bind(console);
 
-	for (playlistFile of playlistsDir)
-		await readPlaylistAndCopyMp3( playlistFile.toString() )
-	
-	return true
+const get_Mp3Name_From_FullPath = (filepath) => {
+	const filename_parts = filepath.split(path.sep).reverse();
+	const filename = filename_parts.shift();
+	const folder = filename_parts.shift();
+	return `${folder} - ${filename}`
 }
 
-var readPlaylistAndCopyMp3 = async ( playlistname )=>{
+const readPlaylistAndCopyMp3 = ( playlistname )=>{
 
-	if ( path.extname(playlistname) !=='.m3u' ) return false
+	if ( path.extname(playlistname) !=='.m3u' ) return false;
 
-	var playlist_folder_fullpath = `${config.musicCollectionFolder}${playlistname.replace(/\.m3u/g,"")}`
+	const playlist_folder_fullpath = path.join( config.musicCollectionFolder, playlistname.replace( /\.m3u/g, "" ));
 
-	if (!fs.existsSync(playlist_folder_fullpath))
-	fs.mkdirSync(playlist_folder_fullpath, { recursive: true });		
+	checkfolder(playlist_folder_fullpath);
 
-	fs.readFile(`${config.playlistsFolder}\\${playlistname}`,'utf-8',function( e, data){
-		data = data.toString().replace(/[\\]+/g,"\\")	
+	readFile(  path.join( config.playlistsFolder, playlistname ), 'utf-8', (err, data) => {
+		data = data.toString().replace(/[\\]+/g,"\\");
+		data = data.split('\n');
 
-		data = data.split('\n')
-
-		for (var filestring of data){
+		for (let filestring of data){
 			if (filestring.length > 0){
-				var mp3name = get_Mp3Name_From_FullPath(filestring)
-				var filedest = `${playlist_folder_fullpath}\\${mp3name}`
-				fs.copyFileSync(filestring, filedest)
+				const mp3name = get_Mp3Name_From_FullPath(filestring);
+				const filedest = path.join( playlist_folder_fullpath, mp3name );
+				copyFileSync(filestring, filedest)
 				log (`Copied:\n${filestring} => \n${filedest}\n`)
 			}
 		}
@@ -45,14 +37,16 @@ var readPlaylistAndCopyMp3 = async ( playlistname )=>{
 
 }
 
-function get_Mp3Name_From_FullPath(path){
-	var filename_parts = path.split('\\').reverse()
-	var filename = filename_parts.shift()
-	var filefoldername = filename_parts.shift()
-	return `${filefoldername} - ${filename}`
+const run = () => {
+	try{
+		const files = readdirSync(config.playlistsFolder);
+
+		for (let playlist of files)
+			readPlaylistAndCopyMp3( playlist.toString() );
+		
+	} catch (e){
+		throw new Error (`Unknown playlist folder. Check config file.`)
+	}
 }
 
-main = async function(){
-	return ( await run() )
-}
-main()
+run();

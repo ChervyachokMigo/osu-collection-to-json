@@ -1,1 +1,1 @@
-npm install fs fs-extra path lodash sanitize-filename --save
+npm install
