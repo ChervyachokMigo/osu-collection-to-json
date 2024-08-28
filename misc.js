@@ -1,4 +1,4 @@
-const { existsSync, mkdirSync } = require("fs");
+const { existsSync, mkdirSync } = require('node:fs');
 
 module.exports = {
 	onlyUnique: (value, index, self) => {

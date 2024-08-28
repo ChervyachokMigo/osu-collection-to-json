@@ -1,5 +1,5 @@
-const { readFile, copyFileSync, readdirSync } = require('fs');
-const path = require('path');
+const { readFile, copyFileSync, readdirSync } = require('node:fs');
+const path = require('node:path');
 
 const { checkfolder } = require('./misc.js');
 const config = require('./config.js');

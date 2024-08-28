@@ -1,6 +1,6 @@
 const {beatmap_property, osu_db_load, collection_db_load} = require('osu-tools');
-const path = require('path');
-const {writeFileSync} = require('fs');
+const path = require('node:path');
+const {writeFileSync} = require('node:fs');
 const {copySync} = require('fs-extra');
 const lodash = require('lodash');
 const sanitize = require('sanitize-filename');
